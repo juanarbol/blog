@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import rehypeHighlight from 'rehype-highlight'
+import * as matter from 'gray-matter'
 
 import * as utils from '@/app/utils.js'
 
@@ -17,18 +18,17 @@ import javascript from 'highlight.js/lib/languages/javascript'
 // And allow only the [existing] mdx files to be used as routes
 export const dynamicParams = false
 export function generateStaticParams () {
-  const files = fs.readdirSync(process.cwd() + '/app/entries')
+  const slugs = fs.readdirSync(process.cwd() + '/app/entries')
     .filter(file => file.endsWith('.mdx'))
-    .map(file => file.replace(/\.mdx$/, ''))
+    .map(file => fs.readFileSync(process.cwd() + `/app/entries/${file}`, 'utf8'))
+    .map(file => matter(file).data.slug)
 
-  return files.map((fileName) => ({
-    slug: fileName
-  }))
+  return slugs.map((slug) => ({ slug }))
 }
 
 function readArticle (slug) {
   // This is a safe call as long as we only allow existing files
-  return fs.readFileSync(process.cwd() + `/app/entries/${slug}.mdx`, 'utf8')
+  return matter(fs.readFileSync(process.cwd() + `/app/entries/${slug}.mdx`, 'utf8'))
 }
 
 const options = {
@@ -41,13 +41,14 @@ const options = {
 function GoBackButton () {
   return (
     <div className='flex flex-row justify-start gap-3'>
-      <Link className='no-underline' href='/'>Go back</Link>
+      <Link className='hover:underline no-underline' href='/'>Go back</Link>
     </div>
   )
 }
 
 export default function Article ({ params }) {
-  const { title, publishDate } = utils.getArticleMetadata(params.slug)
+  // NOTE: this blog now supports "categories" but I'm not using them yet
+  const { data: { title, publishDate }, content } = readArticle(params.slug)
   return (
     <div className='prose dark:prose-invert'>
       <h1 className='mb-1'>{ title || '¯\\_(ツ)_/¯'}</h1>
@@ -56,7 +57,7 @@ export default function Article ({ params }) {
         {/* Make it a bit more readable */}
         <MDXRemote
           options={options}
-          source={readArticle(params.slug)}
+          source={content}
         />
       </article>
       <GoBackButton />

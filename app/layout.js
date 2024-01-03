@@ -2,8 +2,6 @@ import './globals.css'
 
 import { Source_Sans_3 } from 'next/font/google'
 const SourceSans = Source_Sans_3({ subsets: ['latin'] })
-
-
 import { Providers } from './providers.js'
 
 import { Navbar } from './navbar.js'

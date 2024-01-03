@@ -1,18 +1,19 @@
-import { articles } from '@/app/entries/database.js'
 import dayjs from 'dayjs'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
 dayjs.extend(localizedFormat)
 
 import * as utils from '@/app/utils.js'
 
+import { getArticles } from '@/app/utils.js'
+
 import Link from 'next/link'
 
 function ArticlesList () {
   return (
     <div className='flex-auto'>
-      {articles.map(({ title, publishDate, slug }, index) => (
+      {getArticles().map(({ data: { title, publishDate, slug }}, index) => (
         <div key={index} className='flex-auto flex inline-block pb-8'>
-          <Link key={index} href={`/posts/${slug}`} className='flex flex-col'>
+          <Link key={index} href={`/${slug}`} className='flex flex-col'>
           <span className='text-xl hover:underline inline-block'>{title}</span>
           <span className='text-sm inline-block'>{utils.formatPublishDate(publishDate) || '¯\\_(ツ)_/¯'}</span>
           </Link>
