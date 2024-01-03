@@ -14,7 +14,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={SourceSans.className}>
+      <body className={`dark:bg-stone-900 dark:text-white ${SourceSans.className}`}>
         <main className='max-w-prose m-auto'>
           <div className='px-3 md:px-0 pt-3 md:pt-6 pb-1 md:pb-3 min-h-screen'>
             <Providers attribute='class'>

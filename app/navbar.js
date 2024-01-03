@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
+import { ThemeToggle } from './theme-toggle.js'
+
 function Juan () {
   const pathname = usePathname()
   if (pathname === '/') {
@@ -20,7 +22,7 @@ export function Navbar () {
         <a className='hover:underline' href='https://twitter.com/soyjuanarbol' target='_blank'>Twitter</a>
         <a className='hover:underline' href='https://github.com/juanarbol' target='_blank'>GitHub</a>
         <a className='hover:underline' href='https://juanarbol.co' target='_blank'>About</a>
-        <a className='hover:underline' href='https://juanarbol.co/CV.pdf' target='_blank'>CV</a>
+        <ThemeToggle />
       </nav>
     </header>
   )
