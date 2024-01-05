@@ -4,6 +4,8 @@ import { Source_Sans_3 } from 'next/font/google'
 const SourceSans = Source_Sans_3({ subsets: ['latin'] })
 import { Providers } from './providers.js'
 
+import { Analytics } from '@vercel/analytics/react';
+
 import { Navbar } from './navbar.js'
 
 export const metadata = {
@@ -21,6 +23,7 @@ export default function RootLayout({ children }) {
               <Navbar />
               {/* TODO: add navbar */}
               {children}
+              <Analytics />
             </Providers>
           </div>
         </main>
