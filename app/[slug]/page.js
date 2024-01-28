@@ -46,6 +46,23 @@ function GoBackButton () {
   )
 }
 
+export async function generateMetadata ({ params }) {
+  const { data: { title, publishDate }, content } = readArticle(params.slug)
+  return {
+    metadataBase: new URL('https://blog.juanarbol.co/'),
+    title: title,
+    openGraph: {
+      title: title,
+      type: 'article',
+      url: `https://blog.juanarbol.co/${params.slug}`,
+      article: {
+        publishedTime: publishDate
+      },
+      images: ['/computer.png']
+    }
+  }
+}
+
 export default function Article ({ params }) {
   // NOTE: this blog now supports "categories" but I'm not using them yet
   const { data: { title, publishDate }, content } = readArticle(params.slug)

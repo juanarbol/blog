@@ -9,8 +9,15 @@ import { Analytics } from '@vercel/analytics/react';
 import { Navbar } from './navbar.js'
 
 export const metadata = {
+  metadataBase: new URL('https://blog.juanarbol.co/'),
   title: 'Juan Arboleda',
   description: '@juanarbol blog',
+  openGraph: {
+    title: 'Juan Arboleda',
+    description: '@juanarbol blog',
+    url: `https://blog.juanarbol.co/`,
+    images: ['/computer.png']
+  }
 }
 
 export default function RootLayout({ children }) {
@@ -21,7 +28,6 @@ export default function RootLayout({ children }) {
           <div className='px-3 md:px-0 pt-3 md:pt-6 pb-1 md:pb-3 min-h-screen'>
             <Providers attribute='class'>
               <Navbar />
-              {/* TODO: add navbar */}
               {children}
               <Analytics />
             </Providers>
