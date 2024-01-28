@@ -63,9 +63,24 @@ export async function generateMetadata ({ params }) {
   }
 }
 
+function CategoryLinks (categoriesArray) {
+  const categories = categoriesArray.map((category, index) => {
+    return (
+      <Link
+        key={category}
+        href={`/categories/${encodeURIComponent(category)}`}
+        className='hover:underline no-underline mr-1'>
+        {category} {index < categoriesArray.length - 1 ? ',' : ''}
+      </Link>
+    )
+  })
+
+  return categories
+}
+
 export default function Article ({ params }) {
   // NOTE: this blog now supports "categories" but I'm not using them yet
-  const { data: { author, title, publishDate }, content } = readArticle(params.slug)
+  const { data: { author, title, publishDate, categories }, content } = readArticle(params.slug)
   const readingTime = utils.getReadingTime(content)
   const readingTimeLabel = readingTime === 1 ? 'minute' : 'minutes'
   return (
@@ -73,7 +88,8 @@ export default function Article ({ params }) {
       <h1 className='mb-1'>{ title || '¯\\_(ツ)_/¯'}</h1>
       <div className='flex flex-col italic'>
         <span className='text-sm flex-1'>{author}, {utils.formatPublishDate(publishDate)}</span>
-        <span className='text-sm flex-1'>{readingTime} {readingTimeLabel} reading.</span>
+        <span className='text-sm flex-1'>{readingTime} {readingTimeLabel} reading</span>
+        <span className='text-sm flex-1'>in {CategoryLinks(categories.split(', '))}</span>
       </div>
       <article className={`${SourceSerif.className} mt-12`}>
         {/* Make it a bit more readable */}
