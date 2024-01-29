@@ -65,11 +65,14 @@ export async function generateMetadata ({ params }) {
 
 export default function Article ({ params }) {
   // NOTE: this blog now supports "categories" but I'm not using them yet
-  const { data: { title, publishDate }, content } = readArticle(params.slug)
+  const { data: { author, title, publishDate }, content } = readArticle(params.slug)
   return (
     <div className='prose dark:prose-invert'>
       <h1 className='mb-1'>{ title || '¯\\_(ツ)_/¯'}</h1>
-      <span className='text-sm'>{utils.formatPublishDate(publishDate) || '¯\\_(ツ)_/¯'}</span>
+      <div className='flex flex-col italic'>
+        <span className='text-sm flex-1'>{author || '¯\\_(ツ)_/¯'}</span>
+        <span className='text-sm flex-1'>{utils.formatPublishDate(publishDate) || '¯\\_(ツ)_/¯'}</span>
+      </div>
       <article className={`${SourceSerif.className} mt-12`}>
         {/* Make it a bit more readable */}
         <MDXRemote
