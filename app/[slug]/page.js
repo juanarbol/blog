@@ -47,7 +47,7 @@ function GoBackButton () {
 }
 
 export async function generateMetadata ({ params }) {
-  const { data: { title, publishDate }, content } = readArticle(params.slug)
+  const { data: { title, publishDate } } = readArticle(params.slug)
   return {
     metadataBase: new URL('https://blog.juanarbol.co/'),
     title: title,
@@ -66,12 +66,14 @@ export async function generateMetadata ({ params }) {
 export default function Article ({ params }) {
   // NOTE: this blog now supports "categories" but I'm not using them yet
   const { data: { author, title, publishDate }, content } = readArticle(params.slug)
+  const readingTime = utils.getReadingTime(content)
+  const readingTimeLabel = readingTime === 1 ? 'minute' : 'minutes'
   return (
     <div className='prose dark:prose-invert'>
       <h1 className='mb-1'>{ title || '¯\\_(ツ)_/¯'}</h1>
       <div className='flex flex-col italic'>
-        <span className='text-sm flex-1'>{author || '¯\\_(ツ)_/¯'}</span>
-        <span className='text-sm flex-1'>{utils.formatPublishDate(publishDate) || '¯\\_(ツ)_/¯'}</span>
+        <span className='text-sm flex-1'>{author}, {utils.formatPublishDate(publishDate)}</span>
+        <span className='text-sm flex-1'>{readingTime} {readingTimeLabel} reading.</span>
       </div>
       <article className={`${SourceSerif.className} mt-12`}>
         {/* Make it a bit more readable */}
