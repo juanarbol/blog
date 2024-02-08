@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { Source_Serif_4 } from 'next/font/google'
 const SourceSerif = Source_Serif_4({ subsets: ['latin'] })
 
-import 'highlight.js/styles/dark.min.css'
+import 'highlight.js/styles/shades-of-purple.min.css'
 import javascript from 'highlight.js/lib/languages/javascript'
 
 // Read only the mdx files from the articles folder
