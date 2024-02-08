@@ -1,0 +1,332 @@
+---
+author: Juan Arboleda
+slug: 'rusty-loop-js'
+title: 'Rusty JavaScript.'
+publishDate: '2024-02-12'
+cover: '/rusty-js/loop.png'
+updated: null
+categories: 'v8, javascript, compilers'
+---
+
+I’ve struggled for years on the matter of how humans communicate with machines. As humanity we have developed natural lenguajes; with that all the scientific and humanism grow.
+
+Computers are not the exception; with defined rules of syntax and grammar a computer could represent abstract concepts as well.
+
+The Rust programming language syntax has been loved by tons of programmers; it is extensible, it could be short, it could be self-explanatory, and so on. Guess what, there is a proposal for adopting part of the Rusty syntax in JavaScript. Maybe one day the [Rust pattern and matching](https://doc.rust-lang.org/book/ch18-00-patterns.html) syntax will land in JavaScript (see the proposal [here](https://github.com/tc39/proposal-pattern-matching).)
+
+Today I’m *-informally-* proposing a new syntax for JavaScript. Also taken from Rust; I’m talking about [loop](https://doc.rust-lang.org/rust-by-example/flow_control/loop.html#:~:text=Rust%20provides%20a%20loop%20keyword,and%20start%20a%20new%20one).  That keyword will indicate an infinite loop; I truly prefer that over a `while(true)` , it just makes more sense in my mental model.
+
+This experiment will conclude with the rusty loop syntax supported in JavaScript.
+
+![Rusty loop in JavaScript](/rusty-js/loop.png)
+
+I have spent uncountable hours hacking the [V8 JavaScript engine](https://v8.dev/). It is an impressive piece of software; it works as an interpreter, but also as a compiler.
+
+With very little knowledge of compilers and its phases; we will introduce that new syntax to JS using V8.  This article will cover the [lexical analysis](https://en.wikipedia.org/wiki/Lexical_analysis) and [parsing](https://en.wikipedia.org/wiki/Parsing) phases.
+
+### Lexical analysis phase.
+
+In this phase the compiler will convert text into a tokenized version of it. For example, the lexer’s output after reading the text `if (true)` will be like this:
+
+```
++---------+------+------------+------+
+| KEYWORD | LPAR | EXPRESSION | RPAR |
++---------+------+------------+------+
+| if      | (    | true       | )    |
++---------+------+------------+------+
+```
+
+The tokenization process will group sequences of characters into categories; nothing else. This is where the new `loop`  keyword must be included.
+
+### Parsing phase.
+
+The parser will check the previous sequence of tokens with the programming language grammar rules (spec, or syntax). In this phase the parser needs to know about the `loop`  keyword syntax.
+
+![Rusty loop in JavaScript](/rusty-js/loop.png)
+
+Once the lexer and parser knows about the new syntax; this is pretty much done.
+
+For this journey, only four files needs to be changed.
+
+* [src/parsing/keywords.txt](https://github.com/v8/v8/blob/cd0481108254f02619822d2ade64f4b9440c9dd3/src/parsing/keywords.txt) - For the new reserved word.
+* [src/parsing/scanner-inl.h](https://github.com/v8/v8/blob/cd0481108254f02619822d2ade64f4b9440c9dd3/src/parsing/scanner-inl.h) - For the lexical analysis phase.
+* [src/parsing/token.h](https://github.com/v8/v8/blob/cd0481108254f02619822d2ade64f4b9440c9dd3/src/parsing/token.h) - Introduce the new token to the lexer.
+* [src/parsing/parser-base.h](https://github.com/v8/v8/blob/cd0481108254f02619822d2ade64f4b9440c9dd3/src/parsing/parser-base.h) - Inclusion of the new syntax rule.
+
+The next file contains some of the keywords in the JavaScript language (at the moment of this being published).
+
+```
+%struct-type
+%language=C++
+%global-table
+%define initializer-suffix ,Token::IDENTIFIER
+...
+
+async, Token::ASYNC
+else, Token::ELSE
+for, Token::FOR
+function, Token::FUNCTION
+if, Token::IF
+let, Token::LET
+null, Token::NULL_LITERAL
+...
+```
+
+*Source:* [keywords.txt](https://github.com/v8/v8/blob/ec89cca93594ef6ae683d6608904cd5e30378115/src/parsing/keywords.txt)
+
+The V8’s lexer uses a [hash table](https://en.wikipedia.org/wiki/Hash_table) for that keyword list (quite smart; searching a keyword is O(1) complexity). That hash table is generated using [gperf](https://www.gnu.org/software/gperf/); that’s why there is some metadata on top of the file (that metadata will be parsed).
+
+By adding a new token into that file and re-generating the hash-table, the lexical analysis phase will tokenize the `loop` keyword.
+
+Apply the next diff and run `./tools/gen-keywords-gen-h.py`  in the local V8 source (see additional notes in case of failure).
+
+```diff
+diff --git a/src/parsing/keywords.txt b/src/parsing/keywords.txt
+index 5ed039459e2..9872a7bad09 100644
+--- a/src/parsing/keywords.txt
++++ b/src/parsing/keywords.txt
+@@ -43,6 +43,7 @@ in, Token::IN
+ instanceof, Token::INSTANCEOF
+ interface, Token::FUTURE_STRICT_RESERVED_WORD
+ let, Token::LET
++loop, Token::LOOP
+ new, Token::NEW
+ null, Token::NULL_LITERAL
+ of, Token::OF
+```
+
+Somewhere in `src/parsing/keywords-gen.h` file will have a new addition (and more modifications due to the hash function change).
+
+```diff
++     {"loop", Token::LOOP},
+```
+
+The new keyword or token must be registered in the text scanner and the token list.
+
+Covered by the next diff:
+
+```diff
+diff --git a/src/parsing/scanner-inl.h b/src/parsing/scanner-inl.h
+index 18896852677..1603dd1305a 100644
+--- a/src/parsing/scanner-inl.h
++++ b/src/parsing/scanner-inl.h
+@@ -53,6 +53,7 @@ namespace internal {
+   KEYWORD("instanceof", Token::INSTANCEOF)                  \
+   KEYWORD("interface", Token::FUTURE_STRICT_RESERVED_WORD)  \
+   KEYWORD_GROUP('l')                                        \
++  KEYWORD("loop", Token::LOOP)                              \
+   KEYWORD("let", Token::LET)                                \
+   KEYWORD_GROUP('n')                                        \
+   KEYWORD("new", Token::NEW)                                \
+diff --git a/src/parsing/token.h b/src/parsing/token.h
+index c6c9354489c..ad4a7853034 100644
+--- a/src/parsing/token.h
++++ b/src/parsing/token.h
+@@ -144,6 +144,7 @@ namespace internal {
+   K(ELSE, "else", 0)                                                          \
+   K(FINALLY, "finally", 0)                                                    \
+   K(FOR, "for", 0)                                                            \
++  K(LOOP, "loop", 0)                                                          \
+   K(FUNCTION, "function", 0)                                                  \
+   K(IF, "if", 0)                                                              \
+   /* IN */                                                                    \
+```
+
+This is halfway done; the lexical analysis phase is complete for our new syntax recognition.
+
+The lexer now recognizes the `loop`  statement, the next step is to tie that keyword into an infinite loop behavior (like Rust does).
+
+At this point, I just needed some inspiration from parsing different expressions. The new statement is a `while(true)` statement under the hood; and this is the logic of it.
+
+```cpp
+// THIS IS AN EXTRACT OF THE LOGIC.
+// WhileStatement ::
+//   'while' '(' Expression ')' Statement
+auto loop = factory()->NewWhileStatement(peek_position());
+
+Consume(Token::WHILE);
+Expect(Token::LPAREN);
+ExpressionT cond = ParseExpression();
+Expect(Token::RPAREN);
+{
+  SourceRangeScope range_scope(scanner(), &body_range);
+  body = ParseStatement(nullptr, nullptr);
+}
+
+loop->Initialize(cond, body);
+return loop;
+```
+
+*Source:* [parser-base.h](https://github.com/v8/v8/blob/ec89cca93594ef6ae683d6608904cd5e30378115/src/parsing/parser-base.h#L6008)
+
+That logic is run whenever a `Token::WHILE`  appears in the statement parser.
+
+```cpp
+template <typename Impl>
+typename ParserBase<Impl>::StatementT ParserBase<Impl>::ParseStatement(
+    ZonePtrList<const AstRawString>* labels,
+    ZonePtrList<const AstRawString>* own_labels,
+    AllowLabelledFunctionStatement allow_function) {
+  ...
+  switch (peek()) {
+    ...
+    case Token::WHILE:
+      return ParseWhileStatement(labels, own_labels);
+    ...
+```
+
+*Source:* [parser-base.h](https://github.com/v8/v8/blob/ec89cca93594ef6ae683d6608904cd5e30378115/src/parsing/parser-base.h#L5484)
+
+Conceptually speaking,  the parser will need a new function that handles a `Token::LOOP`and it will look like this:
+
+```cpp
+template <typename Impl>
+typename ParserBase<Impl>::StatementT ParserBase<Impl>::ParseLoopStatement(
+    ZonePtrList<const AstRawString>* labels,
+    ZonePtrList<const AstRawString>* own_labels) {
+// LoopStatement ::
+//   'loop' Statement
+auto loop = factory()->NewWhileStatement(peek_position());
+
+Consume(Token::Loop);
+{
+  SourceRangeScope range_scope(scanner(), &body_range);
+  body = ParseStatement(nullptr, nullptr);
+}
+
+loop->Initialize(cond, body);
+return loop;
+```
+
+But what is the condition for this loop? Simple:
+
+`ExpressionT cond = factory()->NewNumberLiteral(1, peek_position());`
+
+*The condition is the JavaScript expression `1`, the final behavior for this will be a `while(true)`*
+
+Add the new case to the parser:
+
+```cpp
+template <typename Impl>
+typename ParserBase<Impl>::StatementT ParserBase<Impl>::ParseStatement(
+    ZonePtrList<const AstRawString>* labels,
+    ZonePtrList<const AstRawString>* own_labels,
+    AllowLabelledFunctionStatement allow_function) {
+    ...
+  switch (peek()) {
+    ...
+    case Token::WHILE:
+      return ParseWhileStatement(labels, own_labels);
+    case Token::Loop:
+      return ParseLoopStatement(labels, own_labels);
+    ...
+```
+
+The final result of this parser addition is the next one:
+
+```diff
+diff --git a/src/parsing/parser-base.h b/src/parsing/parser-base.h
+index be62bca423d..1acb4d56fdd 100644
+--- a/src/parsing/parser-base.h
++++ b/src/parsing/parser-base.h
+@@ -1376,6 +1376,8 @@ class ParserBase {
+   StatementT ParseThrowStatement();
+   StatementT ParseSwitchStatement(ZonePtrList<const AstRawString>* labels);
+   V8_INLINE StatementT ParseTryStatement();
++  StatementT ParseLoopStatement(ZonePtrList<const AstRawString>* labels,
++                               ZonePtrList<const AstRawString>* own_labels);
+   StatementT ParseForStatement(ZonePtrList<const AstRawString>* labels,
+                                ZonePtrList<const AstRawString>* own_labels);
+   StatementT ParseForEachStatementWithDeclarations(
+@@ -5478,6 +5480,8 @@ typename ParserBase<Impl>::StatementT ParserBase<Impl>::ParseStatement(
+         return ParseForAwaitStatement(labels, own_labels);
+       }
+       return ParseForStatement(labels, own_labels);
++    case Token::LOOP:
++      return ParseLoopStatement(labels, own_labels);
+     case Token::CONTINUE:
+       return ParseContinueStatement();
+     case Token::BREAK:
+@@ -6198,6 +6202,37 @@ typename ParserBase<Impl>::StatementT ParserBase<Impl>::ParseTryStatement() {
+                                      pos);
+ }
+
++template <typename Impl>
++typename ParserBase<Impl>::StatementT ParserBase<Impl>::ParseLoopStatement(
++    ZonePtrList<const AstRawString>* labels,
++    ZonePtrList<const AstRawString>* own_labels) {
++  // LoopStatement ::
++  //   'loop' Statement ';'
++  typename FunctionState::LoopScope loop_scope(function_state_);
++
++  // Reuse the same 'while' loop statements.
++  // This is gonna be a while (1) loop.
++  auto loop = factory()->NewWhileStatement(peek_position());
++  Target target(this, loop, labels, own_labels, Target::TARGET_FOR_ANONYMOUS);
++
++  SourceRange body_range;
++  StatementT body = impl()->NullStatement();
++
++  Consume(Token::LOOP);
++  // Create an infinite loop, condition will be something like a while (1).
++  ExpressionT cond = factory()->NewNumberLiteral(1, peek_position());
++  {
++    // Parse the body of the loop.
++    SourceRangeScope range_scope(scanner(), &body_range);
++    body = ParseStatement(nullptr, nullptr);
++  }
++
++  loop->Initialize(cond, body);
++  impl()->RecordIterationStatementSourceRange(loop, body_range);
++
++  return loop;
++}
++
+ template <typename Impl>
+ typename ParserBase<Impl>::StatementT ParserBase<Impl>::ParseForStatement(
+     ZonePtrList<const AstRawString>* labels,
+```
+
+Recompile V8 with these new changes and test!
+
+I’ve created a `loop.js`  file:
+
+```jsx
+let i = 0;
+loop {
+  console.log(i)
+  if(i === 10) break;
+  i++;
+}
+```
+
+Let’s execute that with the compiled V8 (I invite you to try to run that with Node.js or whatever):
+
+```bash
+➜ ./out/arm64.release/d8 loop.js
+0
+1
+2
+...
+9
+10
+```
+
+**The most amazing thing about this approach is that all the V8 optimizations are available for this syntax automagically.**
+
+```bash
+➜ ./out/arm64.release/d8  --trace-opt loop.js
+[marking 0x29400019ac01 <JSFunction (sfi = 0x29400019ab89)> for optimization to MAGLEV, ConcurrencyMode::kConcurrent, reason: hot and stable]
+[compiling method 0x29400019ac01 <JSFunction (sfi = 0x29400019ab89)> (target MAGLEV) OSR, mode: ConcurrencyMode::kConcurrent]
+[completed compiling 0x29400019ac01 <JSFunction (sfi = 0x29400019ab89)> (target MAGLEV) OSR - took 0.000, 0.250, 0.000 ms]
+[compiling method 0x29400019ac01 <JSFunction (sfi = 0x29400019ab89)> (target TURBOFAN) OSR, mode: ConcurrencyMode::kConcurrent]
+```
+
+Don’t forget to follow me on my social networks, [Twitter](https://twitter.com/soyjuanarbol) (yes, [Twitter](https://twitter.com/soyjuanarbol)), [LinkedIn](https://www.linkedin.com/in/juanarbol/), read more of my [blog](https://blog.juanarbol.co/), and visit my [website](https://juanarbol.co/) or drop me an email hi@soyjuanarbol.co
+
+Thanks for reading 💘
+
+***Additional notes:***
+- The hash table generation script needs `gperf` v3.1 at least, otherwise, It will fail.
+- The modified files are inside the `src/parsing` folder. Sometimes the lexer and parser are combined into a single phase.
+- The whole diff without the generated hash table is [here](https://gist.github.com/juanarbol/2ce5d2ca75016d3b1103a1bb546d0953)
