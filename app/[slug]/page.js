@@ -47,7 +47,8 @@ function GoBackButton () {
 }
 
 export async function generateMetadata ({ params }) {
-  const { data: { title, publishDate } } = readArticle(params.slug)
+  const { data: { title, publishDate, cover } } = readArticle(params.slug)
+  const images = cover ? [cover] : ['/computer.png']
   return {
     metadataBase: new URL('https://blog.juanarbol.co/'),
     title: title,
@@ -58,7 +59,7 @@ export async function generateMetadata ({ params }) {
       article: {
         publishedTime: publishDate
       },
-      images: ['/computer.png']
+      images
     }
   }
 }
